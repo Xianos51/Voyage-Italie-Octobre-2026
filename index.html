@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Voyage Italie & Mont-Dore — 16 au 25 octobre 2026</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+<style>
+  :root {
+    --italia-green: #008c45;
+    --italia-red: #cd212a;
+    --ink: #1f2430;
+    --muted: #5b6472;
+    --bg: #f7f5f1;
+    --card: #ffffff;
+    --line: #e6e2da;
+    --accent: #b8860b;
+  }
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  html { scroll-behavior: smooth; }
+  body {
+    font-family: "Segoe UI", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    line-height: 1.6;
+  }
+  a { color: var(--italia-green); text-decoration: none; font-weight: 600; }
+  a:hover { text-decoration: underline; }
+
+  header.hero {
+    background: linear-gradient(135deg, #0b3d2e 0%, #14532d 45%, #7a1f2b 100%);
+    color: #fff;
+    padding: 3.2rem 1.5rem 2.6rem;
+    text-align: center;
+  }
+  .hero .flag { display: inline-flex; height: 8px; width: 120px; border-radius: 4px; overflow: hidden; margin-bottom: 1rem;}
+  .hero .flag span { flex: 1; }
+  .hero h1 { font-size: clamp(1.6rem, 4vw, 2.6rem); letter-spacing: .5px; }
+  .hero p.sub { margin-top: .6rem; color: #d8e3dc; font-size: 1.05rem; }
+  .hero .badges { margin-top: 1.4rem; display: flex; gap: .6rem; justify-content: center; flex-wrap: wrap; }
+  .hero .badge {
+    background: rgba(255,255,255,.12);
+    border: 1px solid rgba(255,255,255,.25);
+    padding: .35rem .9rem; border-radius: 999px; font-size: .85rem;
+  }
+
+  nav {
+    position: sticky; top: 0; z-index: 1000;
+    background: #ffffffee; backdrop-filter: blur(8px);
+    border-bottom: 1px solid var(--line);
+    display: flex; justify-content: center; gap: .4rem; flex-wrap: wrap;
+    padding: .6rem 1rem;
+  }
+  nav a {
+    color: var(--ink); font-weight: 600; font-size: .9rem;
+    padding: .4rem .8rem; border-radius: 8px;
+  }
+  nav a:hover { background: #eef4f0; text-decoration: none; }
+
+  main { max-width: 1080px; margin: 0 auto; padding: 2rem 1.25rem 4rem; }
+  section { margin-bottom: 3.2rem; scroll-margin-top: 70px; }
+  h2 {
+    font-size: 1.5rem; margin-bottom: .3rem;
+    display: flex; align-items: center; gap: .6rem;
+  }
+  h2 .num {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 34px; height: 34px; border-radius: 10px; flex: none;
+    background: var(--italia-green); color: #fff; font-size: 1rem;
+  }
+  .section-sub { color: var(--muted); margin-bottom: 1.4rem; font-size: .95rem; }
+
+  .cards { display: grid; gap: 1rem; }
+  .card {
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 1.1rem 1.3rem;
+    box-shadow: 0 1px 3px rgba(31,36,48,.05);
+  }
+
+  /* ---------- Budget ---------- */
+  .budget-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 1rem; }
+  .budget-card { text-align: center; }
+  .budget-card .amount { font-size: 1.9rem; font-weight: 800; }
+  .budget-card.median { outline: 2px solid var(--accent); }
+  .budget-card .label { color: var(--muted); font-size: .9rem; }
+  .budget-card .per { font-size: .8rem; color: var(--muted); }
+
+  /* ---------- Timeline ---------- */
+  .timeline { display: grid; gap: .9rem; }
+  .day {
+    display: grid; grid-template-columns: 120px 1fr; gap: 1rem;
+    background: var(--card); border: 1px solid var(--line);
+    border-radius: 14px; padding: 1rem 1.2rem; cursor: pointer;
+    transition: box-shadow .15s, transform .15s;
+  }
+  .day:hover { box-shadow: 0 4px 14px rgba(31,36,48,.10); transform: translateY(-1px); }
+  .day .date { font-weight: 800; color: var(--italia-red); font-size: 1.05rem; }
+  .day .date small { display: block; color: var(--muted); font-weight: 600; }
+  .day h3 { font-size: 1.05rem; margin-bottom: .3rem; }
+  .day .modes { display: flex; flex-wrap: wrap; gap: .4rem; margin-top: .55rem; }
+  .tag {
+    font-size: .72rem; font-weight: 700; padding: .18rem .6rem;
+    border-radius: 999px; color: #fff;
+  }
+  .tag.train { background: #2f6fb2; }
+  .tag.plane { background: #6b4fa1; }
+  .tag.bus { background: #c2571a; }
+  .tag.car { background: #3f8f4f; }
+  .tag.walk { background: #7c7f86; }
+  .tag.free { background: #0b7a5c; }
+  .tag.hotel { background: #a1543b; }
+  .day p { font-size: .93rem; color: #3c424e; }
+  .day .links { margin-top: .5rem; font-size: .85rem; }
+  .day .links a { margin-right: .9rem; }
+
+  /* ---------- Map ---------- */
+  #map { height: 560px; border-radius: 14px; border: 1px solid var(--line); z-index: 1; }
+  .legend {
+    background: #ffffffee; border-radius: 10px; padding: .6rem .9rem;
+    box-shadow: 0 1px 4px rgba(0,0,0,.15); font-size: .8rem; line-height: 1.8;
+  }
+  .legend i {
+    display: inline-block; width: 22px; height: 4px; border-radius: 2px;
+    margin-right: 6px; vertical-align: middle;
+  }
+  .map-tools { margin-top: .7rem; display: flex; gap: .6rem; flex-wrap: wrap; }
+  .map-tools button {
+    font: inherit; font-size: .85rem; font-weight: 600;
+    padding: .4rem .9rem; border-radius: 999px; cursor: pointer;
+    border: 1px solid var(--line); background: #fff; color: var(--ink);
+  }
+  .map-tools button.active { background: var(--italia-green); border-color: var(--italia-green); color: #fff; }
+
+  /* ---------- Options table ---------- */
+  .table-wrap { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; background: var(--card); border-radius: 14px; overflow: hidden; border: 1px solid var(--line); font-size: .92rem; }
+  th, td { padding: .7rem .9rem; text-align: left; border-bottom: 1px solid var(--line); }
+  th { background: #f0ede7; font-size: .82rem; text-transform: uppercase; letter-spacing: .5px; }
+  tr:last-child td { border-bottom: none; }
+  tr.reco { background: #eef8f1; }
+  .pill {
+    display: inline-block; font-size: .72rem; font-weight: 800; padding: .15rem .55rem;
+    border-radius: 999px; background: #dff2e6; color: #0b6b3a;
+  }
+
+  /* ---------- Booking links ---------- */
+  .links-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(230px, 1fr)); gap: .9rem; }
+  .link-card h4 { font-size: .95rem; margin-bottom: .15rem; }
+  .link-card p { font-size: .82rem; color: var(--muted); margin-bottom: .5rem; min-height: 2.4em; }
+
+  .tips li { margin: .45rem 0 .45rem 1.2rem; }
+  .tips li::marker { color: var(--italia-red); }
+
+  footer { text-align: center; color: var(--muted); font-size: .82rem; padding: 1.5rem; border-top: 1px solid var(--line); }
+
+  @media (max-width: 640px) {
+    .day { grid-template-columns: 1fr; gap: .3rem; }
+    #map { height: 420px; }
+  }
+</style>
+</head>
+<body>
+
+<header class="hero">
+  <div class="flag"><span style="background:#008c45"></span><span style="background:#f4f5f0"></span><span style="background:#cd212a"></span></div>
+  <h1>🇮🇹 Voyage Italie &amp; Auvergne</h1>
+  <p class="sub">Reims → Abruzzes (Torano Nuovo) → Rome → Le Mont-Dore → Reims</p>
+  <div class="badges">
+    <span class="badge">📅 Ven 16 → Dim 25 octobre 2026</span>
+    <span class="badge">👥 2 personnes</span>
+    <span class="badge">💰 Budget médian ≈ 1 000 € pour deux</span>
+  </div>
+</header>
+
+<nav>
+  <a href="#itineraire">Itinéraire</a>
+  <a href="#carte">Carte</a>
+  <a href="#options">Options aller</a>
+  <a href="#budget">Budget</a>
+  <a href="#reserver">Réservations</a>
+  <a href="#conseils">Conseils</a>
+</nav>
+
+<main>
+
+  <!-- ======================= ITINERAIRE ======================= -->
+  <section id="itineraire">
+    <h2><span class="num">1</span> Itinéraire jour par jour</h2>
+    <p class="section-sub">Cliquez sur une étape pour centrer la carte dessus. Les prix sont indicatifs (par personne sauf mention contraire) et issus de la recherche du planificateur.</p>
+    <div class="timeline cards" id="timeline"></div>
+  </section>
+
+  <!-- ======================= CARTE ======================= -->
+  <section id="carte">
+    <h2><span class="num">2</span> Carte des trajets</h2>
+    <p class="section-sub">Toutes les étapes et segments de transport du voyage — l'option aller recommandée (Beauvais → Pescara) s'affiche en pointillés.</p>
+    <div id="map"></div>
+    <div class="map-tools">
+      <button id="btn-all" class="active">Tout l'itinéraire</button>
+      <button id="btn-aller">Aller (16/10)</button>
+      <button id="btn-rome">Séjour Rome (20–23/10)</button>
+      <button id="btn-retour">Retour (23–25/10)</button>
+    </div>
+  </section>
+
+  <!-- ======================= OPTIONS ======================= -->
+  <section id="options">
+    <h2><span class="num">3</span> Options pour l'aller (Reims → Torano Nuovo)</h2>
+    <p class="section-sub">Comparatif des 5 options étudiées, pour 2 personnes. L'option 1 est recommandée : plus rapide et moins chère, l'ami vient chercher à Pescara (45 km de Torano Nuovo).</p>
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr><th>#</th><th>Itinéraire</th><th>Durée</th><th>Coût (2 pers.)</th><th>Remarque</th></tr>
+        </thead>
+        <tbody>
+          <tr class="reco">
+            <td><span class="pill">1 ✔</span></td>
+            <td><a href="https://www.ryanair.com" target="_blank" rel="noopener">Ryanair</a> Beauvais → <a href="https://www.abruzzoairport.com" target="_blank" rel="noopener">Pescara</a> (direct), ami → Torano</td>
+            <td>≈ 7 h porte à porte</td>
+            <td>≈ 130 – 170 €</td>
+            <td>Recommandé : Pescara n'est qu'à ~45 km de Torano, plus besoin du bus de 3 h40 ni de traverser Rome</td>
+          </tr>
+          <tr>
+            <td>2</td>
+            <td>TGV + vol Paris CDG/Orly → Rome Fiumicino + <a href="https://www.itabus.it" target="_blank" rel="noopener">Itabus</a> → Mosciano S.A.</td>
+            <td>≈ 10 – 11 h</td>
+            <td>≈ 200 – 290 €</td>
+            <td>Option d'origine, le plus de correspondances</td>
+          </tr>
+          <tr>
+            <td>3</td>
+            <td>Ryanair Beauvais → Rome Ciampino + navette → Termini + bus Itabus</td>
+            <td>≈ 11 h</td>
+            <td>≈ 160 – 180 €</td>
+            <td>Vol pas cher mais Ciampino complique la correspondance avec le bus pour les Abruzzes</td>
+          </tr>
+          <tr>
+            <td>4</td>
+            <td>Train via Bruxelles + Ryanair <a href="https://www.charleroi-airport.com" target="_blank" rel="noopener">Charleroi</a> → Pescara</td>
+            <td>≈ 8 – 9 h</td>
+            <td>≈ 110 – 150 €</td>
+            <td>Vol dès ~16 €/pers mais le trajet Reims → Charleroi (≈ 4 h, 50–60 €/pers) annule l'économie</td>
+          </tr>
+          <tr>
+            <td>5</td>
+            <td><a href="https://www.flixbus.fr" target="_blank" rel="noopener">FlixBus</a> direct Reims → Rome + re-bus vers les Abruzzes</td>
+            <td>20 h +</td>
+            <td>≈ 170 € +</td>
+            <td>Rejeté : beaucoup trop long</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+    <p class="section-sub" style="margin-top:.8rem">
+      Si l'ami ne peut pas venir chercher à Pescara : bus <a href="https://www.flixbus.fr" target="_blank" rel="noopener">FlixBus</a> aéroport de Pescara → Giulianova (~30 min), qui n'est qu'à 10 km de Torano Nuovo.
+      Économie totale de l'option 1 : <strong>≈ 100 à 150 € pour le couple</strong> et 3 à 4 heures de trajet en moins.
+    </p>
+  </section>
+
+  <!-- ======================= BUDGET ======================= -->
+  <section id="budget">
+    <h2><span class="num">4</span> Budget total (2 personnes)</h2>
+    <p class="section-sub">Hébergements gratuits à Torano Nuovo (famille) et au Mont-Dore. Transport pour deux : 530 à 787 €, dont vols 214–320 € et trains français ≈ 200–285 €.</p>
+    <div class="budget-grid">
+      <div class="card budget-card">
+        <div class="label">Optimiste</div>
+        <div class="amount">≈ 810 €</div>
+        <div class="per">vols promo, tram à Lyon</div>
+      </div>
+      <div class="card budget-card median">
+        <div class="label">Médian</div>
+        <div class="amount">≈ 1 000 €</div>
+        <div class="per">scénario réaliste</div>
+      </div>
+      <div class="card budget-card">
+        <div class="label">Haut de fourchette</div>
+        <div class="amount">≈ 1 230 €</div>
+        <div class="per">prix élevés, imprévus</div>
+      </div>
+    </div>
+    <div class="table-wrap" style="margin-top:1rem">
+      <table>
+        <thead><tr><th>Poste</th><th>Détail</th><th>Coût (2 pers.)</th></tr></thead>
+        <tbody>
+          <tr><td>✈️ Vols</td><td>Aller (Beauvais→Pescara ou CDG→FCO) + retour FCO→Lyon</td><td>214 – 320 €</td></tr>
+          <tr><td>🚆 Trains français</td><td>Reims→Paris, TGV/TER au retour, PREMS à la carte</td><td>≈ 200 – 285 €</td></tr>
+          <tr><td>🚌 Navettes &amp; bus</td><td>Navette Fiumicino 7 €/pers (ou <a href="https://www.trenitalia.com" target="_blank" rel="noopener">Leonardo Express</a> 14 €), Itabus dès 15 €/pers</td><td>30 – 80 €</td></tr>
+          <tr><td>🚗 Voiture (ami)</td><td>Abruzzes et transferts avec l'ami — gratuit</td><td>0 €</td></tr>
+          <tr><td>🏨 Hôtel Rome</td><td>3 nuits, quartier Monti ou Termini (90–130 €/nuit)</td><td>270 – 390 €</td></tr>
+          <tr><td>🏠 Torano Nuovo &amp; Mont-Dore</td><td>Hébergement famille/amis</td><td>0 €</td></tr>
+          <tr><td>🍽️ Repas &amp; imprévus</td><td>Reste du budget</td><td>≈ 150 – 250 €</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card" style="margin-top:1rem">
+      <strong>Les 3 économies les plus efficaces :</strong>
+      <ul class="tips">
+        <li>Aller via <strong>Beauvais → Pescara</strong> (Ryanair dès ~38–48 €/pers) : supprime navette + bus Rome→Giulianova (~30–50 € et 3–4 h de gagnées).</li>
+        <li><strong>Tram (~2 €) au lieu du Rhônexpress (16,30 €/pers)</strong> à Lyon pour rejoindre Part-Dieu : ~28 € d'économie pour deux.</li>
+        <li><strong>PREMS sur les TGV/Intercités</strong> dès l'ouverture des ventes : les prix bas ne tiennent qu'en réservation anticipée.</li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- ======================= RESERVATIONS ======================= -->
+  <section id="reserver">
+    <h2><span class="num">5</span> Liens de réservation</h2>
+    <p class="section-sub">Tous les sites utiles pour réserver chaque segment du voyage.</p>
+    <div class="links-grid" id="links-grid">
+      <div class="card link-card">
+        <h4>✈️ Kayak</h4><p>Comparateur de vols, meilleurs prix CDG/Beauvais → Rome/Pescara</p>
+        <a href="https://www.kayak.fr" target="_blank" rel="noopener">kayak.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>✈️ Skyscanner</h4><p>Comparaison Ryanair et compagnies sur les 5 options</p>
+        <a href="https://www.skyscanner.fr" target="_blank" rel="noopener">skyscanner.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>✈️ Ryanair</h4><p>Direct Beauvais → Pescara dès ~38–48 €/pers, aussi Charleroi → Pescara</p>
+        <a href="https://www.ryanair.com" target="_blank" rel="noopener">ryanair.com →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚆 SNCF Connect</h4><p>TGV Reims → Paris, Intercités, PREMS du retour</p>
+        <a href="https://www.sncf-connect.com" target="_blank" rel="noopener">sncf-connect.com →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚆 Trainline</h4><p>Trains + bus, bonnes pioches sur les TER français</p>
+        <a href="https://www.trainline.fr" target="_blank" rel="noopener">trainline.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚆 Omio</h4><p>Trains régionaux italiens Rome → Giulianova dès ~11–12 €/pers</p>
+        <a href="https://www.omio.fr" target="_blank" rel="noopener">omio.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚆 Tictactrip</h4><p>Intercités Vichy → Paris Bercy dès ~30–43 €/pers</p>
+        <a href="https://www.tictactrip.eu" target="_blank" rel="noopener">tictactrip.eu →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚌 Itabus</h4><p>Bus direct Fiumicino → Mosciano Sant'Angelo (~3 h40, dès 15 €/pers)</p>
+        <a href="https://www.itabus.it" target="_blank" rel="noopener">itabus.it →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚌 FlixBus</h4><p>Alternative bus (Pescara aéroport → Giulianova ~30 min)</p>
+        <a href="https://www.flixbus.fr" target="_blank" rel="noopener">flixbus.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚆 Trenitalia</h4><p>Leonardo Express Fiumicino ↔ Termini (32 min, 14 €) et trains italiens</p>
+        <a href="https://www.trenitalia.com" target="_blank" rel="noopener">trenitalia.com →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🏨 Booking</h4><p>Hôtels Rome 3 nuits — quartier Monti conseillé (ex. Princeps Boutique Hotel)</p>
+        <a href="https://www.booking.com" target="_blank" rel="noopener">booking.com →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🏛️ Galerie Borghèse</h4><p>Réservation impérative à date fixe, complète des semaines à l'avance</p>
+        <a href="https://www.galleriaborghese.it" target="_blank" rel="noopener">galleriaborghese.it →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🚊 Rhônexpress</h4><p>Aéroport Lyon Saint-Exupéry ↔ Part-Dieu (16,30 €/pers) — ou tram ~2 €</p>
+        <a href="https://www.rhonexpress.fr" target="_blank" rel="noopener">rhonexpress.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🛫 Aéroport Paris-Beauvais</h4><p>Seule destination Italie : Rome Ciampino &amp; Pescara (Ryanair/Wizz)</p>
+        <a href="https://www.aeroportparisbeauvais.fr" target="_blank" rel="noopener">aeroportparisbeauvais.fr →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🛫 Abruzzo Airport (Pescara)</h4><p>Aéroport des Abruzzes, à ~45 km de Torano Nuovo</p>
+        <a href="https://www.abruzzoairport.com" target="_blank" rel="noopener">abruzzoairport.com →</a>
+      </div>
+      <div class="card link-card">
+        <h4>🛫 Charleroi Airport</h4><p>Option via la Belgique, vols Ryanair vers Pescara dès ~16 €</p>
+        <a href="https://www.charleroi-airport.com" target="_blank" rel="noopener">charleroi-airport.com →</a>
+      </div>
+    </div>
+  </section>
+
+  <!-- ======================= CONSEILS ======================= -->
+  <section id="conseils">
+    <h2><span class="num">6</span> Points clés à retenir</h2>
+    <div class="card">
+      <ul class="tips">
+        <li><strong>Réservez vite les vols et l'hôtel de Rome</strong> : mi-octobre est un mois très touristique à Rome, où les prix sont les plus élevés. Le quartier Monti, autour du Colisée, est un bon choix.</li>
+        <li><strong>Vol du 16 arrivant avant 16 h à Fiumicino</strong> : le dernier bus Itabus vers les Abruzzes part en fin d'après-midi.</li>
+        <li><strong>Dimanche 25/10</strong> : très peu de TER au départ du Mont-Dore, prévoir un départ matinal.</li>
+        <li><strong>Galerie Borghèse</strong> (déjà fait : Colisée, Vatican, Sixtine) : réservation impérative à date fixe, souvent complète des semaines à l'avance.</li>
+        <li><strong>Version éco globale ≈ 900–1 000 € pour deux</strong> en combinant l'aller Beauvais→Pescara et le tram à Lyon.</li>
+      </ul>
+    </div>
+  </section>
+
+</main>
+
+<footer>
+  Itinéraire établi avec le planificateur de voyages — prix indicatifs relevés en octobre 2025, à confirmer au moment de la réservation.<br>
+  Dépôt : <a href="https://github.com/Xianos51/Voyage-Italie-Octobre-2026" target="_blank" rel="noopener">Xianos51/Voyage-Italie-Octobre-2026</a>
+</footer>
+
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+/* ---------- Données ---------- */
+const COLORS = {
+  train: '#2f6fb2', plane: '#6b4fa1', bus: '#c2571a',
+  car: '#3f8f4f', alt: '#b8860b'
+};
+
+const PLACES = {
+  reims:       { name: 'Reims', lat: 49.2583, lng: 4.0317 },
+  cdg:         { name: 'Aéroport Paris-CDG', lat: 49.0097, lng: 2.5479 },
+  beauvais:    { name: 'Aéroport Paris-Beauvais', lat: 49.4547, lng: 2.1128 },
+  rome:        { name: 'Rome (Termini / Monti)', lat: 41.9028, lng: 12.4949 },
+  fco:         { name: 'Aéroport Rome-Fiumicino', lat: 41.8003, lng: 12.2388 },
+  mosciano:    { name: 'Mosciano Sant\'Angelo', lat: 42.7889, lng: 13.9167 },
+  torano:      { name: 'Torano Nuovo', lat: 42.7716, lng: 13.8905 },
+  pescara:     { name: 'Aéroport de Pescara (Abruzzes)', lat: 42.4325, lng: 14.1808 },
+  lyonex:      { name: 'Aéroport Lyon Saint-Exupéry', lat: 45.7256, lng: 5.0811 },
+  lyon:        { name: 'Lyon Part-Dieu', lat: 45.7602, lng: 4.8594 },
+  vichy:       { name: 'Vichy', lat: 46.1275, lng: 3.4294 },
+  montdore:    { name: 'Le Mont-Dore', lat: 45.5786, lng: 2.8144 },
+  clermont:    { name: 'Clermont-Ferrand', lat: 45.7772, lng: 3.0870 },
+  paris:       { name: 'Paris', lat: 48.8566, lng: 2.3522 }
+};
+
+/* Segments : [from, to, mode, phase] — phase: aller | rome | retour */
+const SEGMENTS = [
+  { from:'reims', to:'cdg',      mode:'train', phase:'aller', label:'TGV Reims → Paris CDG (~45 min–1 h30, 30–51 €/pers)' },
+  { from:'cdg',   to:'fco',      mode:'plane', phase:'aller', label:'Vol direct CDG → Rome Fiumicino' },
+  { from:'fco',   to:'mosciano', mode:'bus',   phase:'aller', label:'Bus Itabus Fiumicino → Mosciano Sant\'Angelo (~3 h40, dès 15 €/pers)' },
+  { from:'mosciano', to:'torano', mode:'car',  phase:'aller', label:'Voiture de l\'ami : Mosciano → Torano Nuovo' },
+  { from:'torano', to:'rome',    mode:'car',   phase:'rome',  label:'L\'ami vous amène à Rome (20/10)' },
+  { from:'rome',  to:'fco',       mode:'bus',   phase:'retour', label:'Navette Termini → Fiumicino (7 €/pers) ou Leonardo Express (14 €)' },
+  { from:'fco',   to:'lyonex',   mode:'plane', phase:'retour', label:'Vol direct Rome FCO → Lyon Saint-Exupéry (40–70 €/pers)' },
+  { from:'lyonex', to:'lyon',    mode:'train', phase:'retour', label:'Tram (~2 €/pers) ou Rhônexpress (16,30 €/pers) → Part-Dieu' },
+  { from:'lyon',  to:'vichy',    mode:'train', phase:'retour', label:'TER direct Lyon → Vichy (~1 h51, dès 15–18 €/pers)' },
+  { from:'vichy', to:'montdore', mode:'train', phase:'retour', label:'Correspondance TER → Le Mont-Dore' },
+  { from:'montdore', to:'clermont', mode:'train', phase:'retour', label:'Dim 25/10 : TER matinal (très peu de départs le dimanche)' },
+  { from:'clermont', to:'paris', mode:'train', phase:'retour', label:'Intercités / TGV → Paris Bercy (30–43 €/pers)' },
+  { from:'paris', to:'reims',    mode:'train', phase:'retour', label:'TER / TGV → Reims (fin du voyage 🎉)' }
+];
+
+/* Option aller recommandée : Beauvais → Pescara */
+const ALT_SEGMENTS = [
+  { from:'reims', to:'beauvais', mode:'alt', label:'Option éco : TER via Paris (~3 h) ou voiture (2 h30) → Beauvais' },
+  { from:'beauvais', to:'pescara', mode:'alt', label:'Option éco : vol Ryanair direct Beauvais → Pescara (dès ~38–48 €/pers)' },
+  { from:'pescara', to:'torano', mode:'alt', label:'Option éco : l\'ami vient chercher (45 km) — sinon bus → Giulianova' }
+];
+
+/* Étapes (timeline + marqueurs) */
+const DAYS = [
+  {
+    id:'d16', date:'Ven 16/10', title:'Reims → Torano Nuovo',
+    desc:'TGV Reims → Paris CDG puis vol direct vers Rome Fiumicino. Bus direct Itabus (≈3 h40) jusqu\'à Mosciano Sant\'Angelo — l\'ami vient vous chercher pour Torano Nuovo. Alternative recommandée : Ryanair Beauvais → Pescara, ≈7 h porte à porte et ≈130–170 € pour deux.',
+    modes:['train','plane','bus','car'],
+    tags:{train:'TGV Reims→CDG', plane:'Vol CDG→FCO', bus:'Itabus → Mosciano', car:'Voiture ami'},
+    center:[45.9, 8.0], zoom:5, phase:'aller',
+    links:[['SNCF Connect','https://www.sncf-connect.com'],['Kayak (vols)','https://www.kayak.fr'],['Itabus','https://www.itabus.it'],['Ryanair (option Beauvais→Pescara)','https://www.ryanair.com']]
+  },
+  {
+    id:'d17', date:'16 → 20/10', title:'Séjour à Torano Nuovo (Abruzzes)',
+    desc:'Quatre jours chez l\'ami, hébergement gratuit et voiture disponible sur place pour rayonner dans les Abruzzes (Giulianova, Teramo, côte adriatique…).',
+    modes:['free','car'],
+    tags:{free:'Hébergement offert', car:'Voiture de l\'ami'},
+    center:[42.77, 13.89], zoom:10, phase:'aller',
+    links:[['Aéroport de Pescara','https://www.abruzzoairport.com']]
+  },
+  {
+    id:'d20', date:'Mar 20/10', title:'Torano Nuovo → Rome (3 nuits)',
+    desc:'L\'ami vous emmène en voiture jusqu\'à Rome. Installation pour 3 nuits dans le quartier Monti (autour du Colisée) ou près de Termini, 90–130 €/nuit.',
+    modes:['car','hotel'],
+    tags:{car:'Voiture ami', hotel:'Hôtel 3 nuits à Rome'},
+    center:[41.9028, 12.4949], zoom:12, phase:'rome',
+    links:[['Booking (hôtels Rome)','https://www.booking.com'],['Galerie Borghèse (réserver !)','https://www.galleriaborghese.it']]
+  },
+  {
+    id:'d23', date:'Ven 23/10', title:'Rome → Lyon → Le Mont-Dore',
+    desc:'Navette ou Leonardo Express jusqu\'à Fiumicino, vol direct vers Lyon Saint-Exupéry (40–70 €/pers). Tram économique (~2 €) jusqu\'à Part-Dieu, TER direct Lyon → Vichy (~1 h51), correspondance vers Le Mont-Dore. Hébergement gratuit.',
+    modes:['bus','plane','train'],
+    tags:{bus:'Termini→FCO (7 €)', plane:'Vol FCO→Lyon', train:'TER Lyon→Vichy→Mont-Dore'},
+    center:[45.6, 4.5], zoom:6, phase:'retour',
+    links:[['Trenitalia / Leonardo Express','https://www.trenitalia.com'],['Kayak (vol retour)','https://www.kayak.fr'],['Rhônexpress','https://www.rhonexpress.fr'],['Trainline (TER)','https://www.trainline.fr']]
+  },
+  {
+    id:'d25', date:'Dim 25/10', title:'Le Mont-Dore → Reims',
+    desc:'Retour complet en train : départ matinal (très peu de TER le dimanche), Mont-Dore → Clermont-Ferrand, Intercités/TGV vers Paris Bercy, puis dernier tronçon jusqu\'à Reims. 7 à 11 h selon les correspondances, 50–80 €/pers.',
+    modes:['train'],
+    tags:{train:'TER + Intercités + TGV'},
+    center:[46.9, 3.2], zoom:6, phase:'retour',
+    links:[['SNCF Connect','https://www.sncf-connect.com'],['Tictactrip','https://www.tictactrip.eu'],['Trainline','https://www.trainline.fr']]
+  }
+];
+
+/* ---------- Carte ---------- */
+const map = L.map('map').setView([46.5, 7.5], 5);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+  maxZoom: 18,
+  attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
+}).addTo(map);
+
+const layerGroups = { aller: L.layerGroup(), rome: L.layerGroup(), retour: L.layerGroup() };
+const altGroup = L.layerGroup().addTo(map);
+
+const MODE_ICONS = { train:'🚆', plane:'✈️', bus:'🚌', car:'🚗', alt:'⭐' };
+
+function segPolyline(seg, group, dashed) {
+  const a = PLACES[seg.from], b = PLACES[seg.to];
+  const line = L.polyline([[a.lat,a.lng],[b.lat,b.lng]], {
+    color: COLORS[seg.mode], weight: 3.5, opacity: .85,
+    dashArray: dashed ? '6 8' : null
+  });
+  line.bindPopup('<strong>' + MODE_ICONS[seg.mode] + ' ' + seg.label + '</strong>');
+  line.addTo(group);
+  return line;
+}
+
+SEGMENTS.forEach(s => segPolyline(s, layerGroups[s.phase], false));
+ALT_SEGMENTS.forEach(s => segPolyline(s, altGroup, true));
+
+/* Marqueurs des étapes */
+DAYS.forEach(d => {
+  const m = L.circleMarker(d.center, {
+    radius: 9, color: '#fff', weight: 2,
+    fillColor: d.phase === 'aller' ? '#008c45' : d.phase === 'rome' ? '#cd212a' : '#2f6fb2',
+    fillOpacity: 1
+  });
+  m.bindPopup('<strong>' + d.date + ' — ' + d.title + '</strong><br>' + d.desc);
+  m.addTo(map);
+});
+
+/* Légende */
+const legend = L.control({ position: 'bottomright' });
+legend.onAdd = function () {
+  const div = L.DomUtil.create('div', 'legend');
+  div.innerHTML =
+    '<div><i style="background:' + COLORS.train + '"></i>Train / TGV / TER</div>' +
+    '<div><i style="background:' + COLORS.plane + '"></i>Avion</div>' +
+    '<div><i style="background:' + COLORS.bus + '"></i>Bus / navette</div>' +
+    '<div><i style="background:' + COLORS.car + '"></i>Voiture de l\'ami</div>' +
+    '<div><i style="background:' + COLORS.alt + '"></i>Option éco Beauvais→Pescara</div>';
+  return div;
+};
+legend.addTo(map);
+
+/* Filtres */
+const allLayers = [layerGroups.aller, layerGroups.rome, layerGroups.retour];
+function showPhase(phase) {
+  map.removeLayer(layerGroups.aller);
+  map.removeLayer(layerGroups.rome);
+  map.removeLayer(layerGroups.retour);
+  if (phase === 'all') {
+    allLayers.forEach(l => map.addLayer(l));
+    map.setView([46.5, 7.5], 5);
+  } else {
+    map.addLayer(layerGroups[phase]);
+    const pts = [];
+    SEGMENTS.filter(s => s.phase === phase).forEach(s => {
+      pts.push([PLACES[s.from].lat, PLACES[s.from].lng], [PLACES[s.to].lat, PLACES[s.to].lng]);
+    });
+    map.fitBounds(L.latLngBounds(pts).pad(0.15));
+  }
+}
+document.querySelectorAll('.map-tools button').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.map-tools button').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    showPhase(btn.dataset.phase || 'all');
+  });
+});
+document.querySelectorAll('.map-tools button').forEach((btn, i) => {
+  btn.dataset.phase = ['all','aller','rome','retour'][i];
+});
+
+/* ---------- Timeline ---------- */
+const tl = document.getElementById('timeline');
+DAYS.forEach(d => {
+  const el = document.createElement('div');
+  el.className = 'day card';
+  el.innerHTML =
+    '<div><div class="date">' + d.date + '</div></div>' +
+    '<div>' +
+      '<h3>' + d.title + '</h3>' +
+      '<p>' + d.desc + '</p>' +
+      '<div class="modes">' + d.modes.map(m => '<span class="tag ' + m + '">' + d.tags[m] + '</span>').join('') + '</div>' +
+      '<div class="links">' + d.links.map(l => '<a href="' + l[1] + '" target="_blank" rel="noopener">' + l[0] + ' ↗</a>').join('') + '</div>' +
+    '</div>';
+  el.addEventListener('click', (e) => {
+    if (e.target.tagName === 'A') return;
+    showPhase(d.phase);
+    document.querySelectorAll('.map-tools button').forEach(b => b.classList.remove('active'));
+    document.querySelector('#carte').scrollIntoView({ behavior: 'smooth' });
+    setTimeout(() => map.flyTo(d.center, d.zoom, { duration: 1.2 }), 400);
+  });
+  tl.appendChild(el);
+});
+</script>
+</body>
+</html>
